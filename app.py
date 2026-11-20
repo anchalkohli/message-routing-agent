@@ -163,13 +163,22 @@ def show_assistant():
         else:
             try:
                 with st.spinner("Checking routing evidence…"):
-                    answer, trace = run_agent(custom.strip() or example)
-                st.session_state.agent_result = answer, trace
+                    metrics = []
+                    answer, trace = run_agent(custom.strip() or example, metrics=metrics)
+                st.session_state.agent_result = answer, trace, metrics
             except (RuntimeError, ValueError) as error:
                 st.error(str(error))
     if "agent_result" in st.session_state:
-        answer, trace = st.session_state.agent_result
+        answer, trace, metrics = st.session_state.agent_result
+        st.success("Live OpenAI response received")
+        a, b, c = st.columns(3)
+        a.metric("Model", metrics[-1]["model"] or os.environ["OPENAI_MODEL"])
+        b.metric("Tool calls", len(trace))
+        c.metric("API tokens", sum((m["usage"] or {}).get("total_tokens", 0) for m in metrics))
         st.write(answer)
+        with st.expander("Live API telemetry (response IDs and timings)"):
+            st.json(metrics)
+        st.caption("Routing decisions are previews only. Tool evidence is authoritative.")
         with st.expander(f"Tool trace · {len(trace)} calls"):
             st.json(trace)
 
