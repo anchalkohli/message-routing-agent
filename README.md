@@ -87,3 +87,7 @@ Extract the ZIP and copy this folder into a new repository. Commit the bundled s
 Set `ROUTING_MODE=production`, `ROUTING_DATA_DIR` to the active release directory, and `ROUTING_AUDIT_DB` to an absolute SQLite file path. Use the [Linux deployment runbook](deploy/README.md) for a configured systemd service, publishing and rolling back releases, readiness checks, access and audit recovery.
 
 Production mode opens only the local search and draft-review workspace. The hosted assistant remains available in the demo profile with fictional data. The production input adapter currently expects the documented normalized CSV schema. Verify your internal mappings, real routing precedence and infrastructure access controls before deployment.
+
+## Interview-ready live LLM demonstration
+
+Run `python -m unittest discover -v` and `streamlit run app.py`. For actual hosted model execution, configure `OPENAI_API_KEY` and `OPENAI_MODEL` in your environment, then run `python live_demo.py`. This smoke test requires real API credentials and checks lookup and duplicate evidence. The assistant now loads the bundled synthetic CSVs from disk and shows provider model, response IDs, token usage, elapsed times and tool arguments/results. It never accesses the local-directory production dataset. See [INTERVIEW.md](INTERVIEW.md) for interview preparation. GitHub Actions runs offline tests on pushes; mocked tests are not proof of live model execution.
