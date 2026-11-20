@@ -4,6 +4,7 @@ from dataclasses import dataclass, asdict
 import json
 import os
 import re
+from time import perf_counter
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -169,16 +170,41 @@ def openai_response(payload):
         raise RuntimeError("Could not complete the OpenAI connection.") from error
 
 
-def run_agent(question, respond=openai_response):
+def run_agent(question, respond=openai_response, *, metrics=None):
+    from pathlib import Path
+    from routing_files import load_routing_files, read_local_files
+
+    # Hosted tools only access the repository's fictional fixture directory.
+    dataset = load_routing_files(*read_local_files(Path(__file__).with_name('samples')))
+
+    def lookup(region, bic, message_type, include_wildcard):
+        if not is_mt(message_type):
+            raise ValueError('Invalid message type.')
+        return search_routes(region, bic, ((message_type, message_type),),
+                             include_wildcard, rules=dataset.rules, copy_rules=dataset.copies)
+
+    def review(**arguments):
+        return review_rule(**arguments, rules=dataset.rules)
+
+    handlers = {'lookup_routes': lookup, 'review_rule': review}
+    return execute_agent(question, respond, handlers, metrics)
+
+
+def execute_agent(question, respond, handlers, metrics=None):
     if not isinstance(question, str) or not question.strip() or len(question) > 2000:
         raise ValueError("Enter a demo question up to 2,000 characters.")
     conversation = [{"role": "user", "content": question}]
     trace = []
-    for _ in range(5):
+    for iteration in range(5):
+        started = perf_counter()
         response = respond({"instructions": INSTRUCTIONS, "input": list(conversation),
                             "tools": TOOLS, "parallel_tool_calls": False, "store": False,
                             "max_output_tokens": 1800,
                             "include": ["reasoning.encrypted_content"]})
+        if metrics is not None:
+            metrics.append({"iteration": iteration + 1, "model": response.get("model"),
+                            "response_id": response.get("id"), "usage": response.get("usage"),
+                            "elapsed_ms": round((perf_counter() - started) * 1000)})
         if response.get("status") != "completed":
             raise RuntimeError("The model response ended before completion.")
         output = response["output"]
@@ -193,12 +219,13 @@ def run_agent(question, respond=openai_response):
         conversation.extend(output)
         for call in calls:
             name = call["name"]
+            arguments = None
             try:
                 arguments = json.loads(call["arguments"])
-                result = HANDLERS[name](**arguments)
+                result = handlers[name](**arguments)
             except (ValueError, TypeError, KeyError) as error:
                 result = {"error": str(error)}
-            trace.append({"tool": name, "result": result})
+            trace.append({"tool": name, "arguments": arguments, "result": result})
             conversation.append({"type": "function_call_output", "call_id": call["call_id"],
                                  "output": json.dumps(result)})
     return "The agent reached its tool-call limit. Review the trace for completed checks.", trace
