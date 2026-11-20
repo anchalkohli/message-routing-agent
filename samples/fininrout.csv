@@ -1,0 +1,32 @@
+region,rule_type,bic,message_type,gcn,sender,action
+
+
+
+
+
+
+
+
+
+
+NAM,RR1,DEMOUS33,103,0101,,rtecode
+NAM,RR1,DEMOUS33,200 TO 209,0202,,rtecode
+NAM,RR1,DEMOUS33,100 TO 999,0101,,rtecode
+
+
+
+
+
+
+NAM,RR1RRC,DEMOUS33,100 TO 999,0303,,rtecode
+
+
+
+
+
+
+
+
+
+
+EMEA,RR2,DEMOGB22,103,0101,,rtecode

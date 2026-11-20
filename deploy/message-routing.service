@@ -1,0 +1,30 @@
+[Unit]
+Description=Message Routing Review
+After=local-fs.target
+
+[Service]
+Type=simple
+User=message-routing
+Group=message-routing
+WorkingDirectory=/opt/message-routing
+Environment=ROUTING_MODE=production
+Environment=ROUTING_DATA_DIR=/srv/message-routing/current
+Environment=ROUTING_AUDIT_DB=/var/lib/message-routing/reviews.sqlite3
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+ExecStartPre=/opt/message-routing/.venv/bin/python -m routing_operations check
+ExecStart=/opt/message-routing/.venv/bin/python -m streamlit run app.py --server.address=127.0.0.1 --server.port=8501 --server.headless=true
+Restart=on-failure
+RestartSec=5s
+StateDirectory=message-routing
+StateDirectoryMode=0750
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+IPAddressDeny=any
+IPAddressAllow=localhost
+
+[Install]
+WantedBy=multi-user.target
